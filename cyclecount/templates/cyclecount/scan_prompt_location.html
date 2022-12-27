@@ -1,0 +1,10 @@
+<h1>Session id:{{ session.id }}</h1>
+
+<h2>Scan Location</h2>
+
+<form action="{% url 'cyclecount:scan_location' session.id %}" method="post">
+    {% csrf_token %}
+    {% if error_message %}<p><strong>{{ error_message }}</strong></p>{% endif %}
+    <input type="text" id="location-barcode" name="location-barcode">
+    <input type="submit" value="Submit">
+</form>

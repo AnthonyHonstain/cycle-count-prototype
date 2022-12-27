@@ -1,0 +1,9 @@
+<h1>Session id:{{ session.id }}</h1>
+<h2>Location id:{{ location.id }}</h2>
+<h3>Scan SKU</h3>
+<form action="{% url 'cyclecount:scan_product' session_id=session.id location_id=location.id %}" method="post">
+    {% csrf_token %}
+    {% if error_message %}<p><strong>{{ error_message }}</strong></p>{% endif %}
+    <input type="text" id="sku" name="sku">
+    <input type="submit" value="Submit">
+</form>

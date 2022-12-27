@@ -13,8 +13,8 @@ class Product(models.Model):
 
 
 class Inventory(models.Model):
-    location_id = models.ForeignKey(Location, on_delete=models.CASCADE)
-    product_id = models.ForeignKey(Product, on_delete=models.CASCADE)
+    location = models.ForeignKey(Location, on_delete=models.CASCADE)
+    product = models.ForeignKey(Product, on_delete=models.CASCADE)
     qty = models.IntegerField()
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -25,10 +25,16 @@ class CountSession(models.Model):
 
 
 class IndividualCount(models.Model):
-    session = models.ForeignKey(CountSession, on_delete=models.CASCADE)
-    location_id = models.ForeignKey(Location, on_delete=models.CASCADE)
+    class CountState(models.TextChoices):
+        ACTIVE = 'Active'
+        DELETED = 'Deleted'
+
     associate = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    state = models.TextChoices('Active', 'Deleted')
+    session = models.ForeignKey(CountSession, on_delete=models.CASCADE)
+    location = models.ForeignKey(Location, on_delete=models.CASCADE)
+    product = models.ForeignKey(Product, on_delete=models.CASCADE)
+    qty = models.IntegerField(default=1)
+    state = models.CharField(max_length=10, choices=CountState.choices, default=CountState.ACTIVE)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

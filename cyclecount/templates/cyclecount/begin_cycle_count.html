@@ -1,3 +1,7 @@
 <h1>Start Session</h1>
 <p>Do you want to start a new session for cycle counting?</p>
-<a href="{% url 'cyclecount:start_new_session' %}">Start session</a>
+
+<form action="{% url 'cyclecount:start_new_session' %}" method="post">
+    {% csrf_token %}
+    <input type="submit" value="Start New Cycle Count Session">
+</form>
