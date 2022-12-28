@@ -7,7 +7,7 @@ class CountSessionAdmin(admin.ModelAdmin):
 
 
 class IndividualCountAdmin(admin.ModelAdmin):
-    list_display = ('id', 'associate_id', 'location_id', 'product_id', 'qty', 'state')
+    list_display = ('id', 'session_id', 'associate_id', 'location_id', 'product_id', 'qty', 'state')
 
 
 admin.site.register(Location)
