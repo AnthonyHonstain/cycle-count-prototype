@@ -56,7 +56,7 @@ def scan_product(request: HttpRequest, session_id: int, location_id: int) -> Htt
     current_user = request.user
 
     individual_count = IndividualCount(
-        associate=current_user, session=session, location=location, product=product, state='ACTIVE'
+        associate=current_user, session=session, location=location, product=product, state=IndividualCount.CountState.ACTIVE
     )
     individual_count.save()
 
