@@ -23,10 +23,14 @@ class Inventory(models.Model):
 class CountSession(models.Model):
     associate = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
 
+    def count_of_individual_counts(self) -> int:
+        return IndividualCount.objects.filter(session=self).count()
+
 
 class IndividualCount(models.Model):
     class CountState(models.TextChoices):
         ACTIVE = 'Active'
+        COMPLETED = 'Completed'
         DELETED = 'Deleted'
 
     associate = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
