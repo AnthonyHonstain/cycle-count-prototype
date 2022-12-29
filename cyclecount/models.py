@@ -21,20 +21,20 @@ class Inventory(models.Model):
 
 
 class CountSession(models.Model):
-    # class FinalState(models.TextChoices):
-    #     ACCEPTED = 'Accepted'
-    #     CANCELED = 'Canceled'
+    class FinalState(models.TextChoices):
+        ACCEPTED = 'Accepted'
+        CANCELED = 'Canceled'
 
-    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE) #, related_name='created_by')
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='created_by')
 
     # Setting the final_state as null initially, not Django convention but what I expect when I query DB
     # https://docs.djangoproject.com/en/4.1/ref/models/fields/#null
-    #final_state = models.CharField(max_length=10, choices=FinalState.choices, null=True)
-    # final_state_datetime = models.DateTimeField(null=True)
-    # completed_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, null=True, related_name='completed_by')
-    #
-    # created_at = models.DateTimeField(auto_now_add=True)
-    # updated_at = models.DateTimeField(auto_now=True)
+    final_state = models.CharField(max_length=10, choices=FinalState.choices, null=True)
+    final_state_datetime = models.DateTimeField(null=True)
+    completed_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, null=True, related_name='completed_by')
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     def count_of_individual_counts(self) -> int:
         return IndividualCount.objects.filter(session=self).count()
