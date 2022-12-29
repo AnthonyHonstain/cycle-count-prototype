@@ -3,7 +3,7 @@ from .models import Location, Product, Inventory, CountSession, IndividualCount,
 
 
 class CountSessionAdmin(admin.ModelAdmin):
-    list_display = ('id', 'associate_id', 'count_of_individual_counts')
+    list_display = ('id', 'created_by', 'count_of_individual_counts')
 
 
 class IndividualCountAdmin(admin.ModelAdmin):
