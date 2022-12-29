@@ -13,7 +13,7 @@ def start_new_session(request: HttpRequest) -> HttpResponseRedirect:
     # TODO - this is dumb, I don't want to create a new session for each page load.
     # TODO -      Note that its been a few years since I though through these full stack design issues
     current_user = request.user
-    new_session = CountSession(associate=current_user)
+    new_session = CountSession(created_by=current_user)
     new_session.save()
     return HttpResponseRedirect(reverse('cyclecount:scan_prompt_location', args=(new_session.id,)))
 

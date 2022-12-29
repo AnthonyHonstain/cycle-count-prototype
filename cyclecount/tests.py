@@ -19,7 +19,7 @@ class CycleCountTests(TestCase):
         cls.location.save()
         cls.product = Product(description='test-product-01', sku='test-sku-01')
         cls.product.save()
-        cls.session = CountSession(associate=cls.user)
+        cls.session = CountSession(created_by=cls.user)
         cls.session.save()
 
     def test_begin_cycle_count_loads_and_has_link_to_start(self):
@@ -34,7 +34,7 @@ class CycleCountTests(TestCase):
         response = self.client.post(url)
         self.assertEqual(response.status_code, 302)
 
-        counts = CountSession.objects.filter(associate=self.user).count()
+        counts = CountSession.objects.filter(created_by=self.user).count()
         self.assertEqual(counts, 2, 'New CountSession was created')
 
     def test_start_session_without_auth(self):
