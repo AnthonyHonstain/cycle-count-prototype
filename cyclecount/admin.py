@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Location, Product, Inventory, CountSession, IndividualCount, CycleCountModification
+from .models import Location, Product, Inventory, CountSession, IndividualCount, CycleCountModification, CustomUser
 
 
 class CountSessionAdmin(admin.ModelAdmin):
@@ -10,6 +10,7 @@ class IndividualCountAdmin(admin.ModelAdmin):
     list_display = ('id', 'session_id', 'associate_id', 'location_id', 'product_id', 'qty', 'state')
 
 
+admin.site.register(CustomUser)
 admin.site.register(Location)
 admin.site.register(Product)
 admin.site.register(Inventory)

@@ -1,0 +1,30 @@
+<h1>Session Review</h1>
+<p>Summary cyclecounts by location</p>
+
+<p>Session creatded by: {{count_session.created_by.username}}</p>
+
+<p>Modifications by (location,product):</p>
+<ul>
+    {% for location_quantity in location_quantities.values %}
+    <li>location:{{location_quantity.location.description}} sku:{{location_quantity.product.sku}} current-qty:{{location_quantity.qty}} new-qty:{{location_quantity.cyclecount_qty}}</li>
+    {% endfor %}
+</ul>
+
+{% load tz %}
+{% localtime on %}
+<p>List of individual counts</p>
+<ul>
+    {% for ic in individual_counts %}
+    <li>{{ic.associate.username}} {{ic.location.description}} {{ic.product.sku}} {{ic.qty}} {{ic.state}} {{ic.created_at}}</li>
+    {% endfor %}
+</ul>
+{% endlocaltime %}
+
+<form action="{% url 'cyclecount:finalize_session' session_id=count_session.id %}" method="post">
+    {% csrf_token %}
+    {% for choice in count_session.FinalState %}
+    <input type="radio" name="choice" id="choice{{ forloop.counter }}" value="{{ choice }}">
+    <label for="choice{{ forloop.counter }}">{{ choice }}</label><br>
+    {% endfor %}
+    <input type="submit" value="Submit">
+</form>

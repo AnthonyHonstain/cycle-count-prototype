@@ -1,0 +1,8 @@
+<h1>Active Sessions</h1>
+<p>These are the active sessions</p>
+
+<ul>
+    {% for session in count_sessions %}
+    <li><a href="{% url 'cyclecount:session_review' session_id=session.id %}">{{session.id}}</a></li>
+    {% endfor %}
+</ul>

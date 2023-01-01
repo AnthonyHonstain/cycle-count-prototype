@@ -1,7 +1,7 @@
 from django.test import TestCase
 from django.urls import reverse
 
-from .models import CustomUser, CountSession, Location, Product, IndividualCount
+from cyclecount.models import CustomUser, CountSession, Location, Product, IndividualCount
 
 
 class CycleCountTests(TestCase):
