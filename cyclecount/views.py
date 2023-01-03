@@ -76,7 +76,9 @@ def list_active_sessions(request: HttpRequest) -> HttpResponse:
 def session_review(request: HttpRequest, session_id: int) -> HttpResponse:
     count_session = get_object_or_404(CountSession, pk=session_id)
 
-    individual_counts = IndividualCount.objects.filter(session=count_session)
+    individual_counts = (IndividualCount.objects
+                         .filter(session=count_session)
+                         .select_related('associate', 'location', 'product'))
 
     # For each (location,product) get its current qty. Also roll up the count based on the cycle count.
     location_quantities = {}
