@@ -2,7 +2,7 @@ from django.http import HttpResponseRedirect, HttpRequest, HttpResponse
 from django.shortcuts import render, get_object_or_404
 from django.utils import timezone
 from django.urls import reverse
-from .models import Location, Product, CountSession, IndividualCount, Inventory, CycleCountModification
+from .models import Location, Product, CountSession, IndividualCount, Inventory, CycleCountModification, get_rollup_of_active_counts
 
 
 def begin_cycle_count(request: HttpRequest) -> HttpResponse:
@@ -76,23 +76,38 @@ def list_active_sessions(request: HttpRequest) -> HttpResponse:
 def session_review(request: HttpRequest, session_id: int) -> HttpResponse:
     count_session = get_object_or_404(CountSession, pk=session_id)
 
-    individual_counts = IndividualCount.objects.filter(session=count_session)
+    individual_counts = (IndividualCount.objects
+                         .filter(session=count_session)
+                         .select_related('associate', 'location', 'product'))
+
+    rollup = get_rollup_of_active_counts(count_session)
 
     # For each (location,product) get its current qty. Also roll up the count based on the cycle count.
     location_quantities = {}
-    for individual_count in individual_counts:
-        key = (individual_count.location, individual_count.product)
-        if key not in location_quantities:
-            inventory = Inventory.objects.filter(location=individual_count.location,
-                                                 product=individual_count.product).first()
-            inventory_qty = inventory.qty if inventory is not None else 0
-            location_quantities[key] = {
-                'location': individual_count.location,
-                'product': individual_count.product,
-                'cyclecount_qty': 0,
-                'qty': inventory_qty
-            }
-        location_quantities[key]['cyclecount_qty'] += 1
+    for element in rollup:
+        key = (element['location'], element['product'])
+        inventory = Inventory.objects.filter(location=element['location'], product=element['product']).first()
+        inventory_qty = inventory.qty if inventory is not None else 0
+        location_quantities[key] = {
+            'location': element['location'],
+            'product': element['product'],
+            'cyclecount_qty': element['count'],
+            'qty': inventory_qty
+        }
+
+    # for individual_count in individual_counts:
+    #     key = (individual_count.location, individual_count.product)
+    #     if key not in location_quantities:
+    #         inventory = Inventory.objects.filter(location=individual_count.location,
+    #                                              product=individual_count.product).first()
+    #         inventory_qty = inventory.qty if inventory is not None else 0
+    #         location_quantities[key] = {
+    #             'location': individual_count.location,
+    #             'product': individual_count.product,
+    #             'cyclecount_qty': 0,
+    #             'qty': inventory_qty
+    #         }
+    #     location_quantities[key]['cyclecount_qty'] += 1
 
     context = {
         'count_session': count_session,

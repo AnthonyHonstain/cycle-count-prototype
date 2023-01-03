@@ -1,6 +1,7 @@
 from django.conf import settings
 from django.db import models
 from django.contrib.auth.models import AbstractUser
+from django.db.models import Count
 
 
 class Location(models.Model):
@@ -55,6 +56,39 @@ class IndividualCount(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
 
+def get_rollup_of_active_counts(count_session: CountSession):
+    group_by_results = (IndividualCount.objects
+                        .filter(session=count_session, state__exact=IndividualCount.CountState.ACTIVE)
+                        .values('session', 'location', 'product')
+                        .annotate(count=Count('qty')))
+
+    # Collect the id's to lookup
+    locations_ids = set()
+    product_ids = set()
+    for result in group_by_results:
+        locations_ids.add(result['location'])
+        product_ids.add(result['product'])
+
+    # Get all the locations model objects  ------------------------------------
+    raw_locations = Location.objects.filter(id__in=locations_ids)
+    location_lookup = {}
+    for loc in raw_locations:
+        location_lookup[loc.id] = loc
+
+    # Get all the product model objects ---------------------------------------
+    raw_products = Product.objects.filter(id__in=product_ids)
+    product_lookup = {}
+    for prod in raw_products:
+        product_lookup[prod.id] = prod
+    print(location_lookup)
+
+    # Slam it all together in the dictionary from the original group by.
+    for result in group_by_results:
+        result['location'] = location_lookup[result['location']]
+        result['product'] = product_lookup[result['product']]
+
+    return group_by_results
+
 class CycleCountModification(models.Model):
     # TODO - still not sure how I want to model the final approval of counts that triggers the finally inventory count
     session = models.ForeignKey(CountSession, on_delete=models.CASCADE)
@@ -68,4 +102,3 @@ class CycleCountModification(models.Model):
 # https://docs.djangoproject.com/en/4.0/topics/auth/customizing/#auth-custom-user
 class CustomUser(AbstractUser):
     pass
-
