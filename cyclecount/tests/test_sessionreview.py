@@ -133,8 +133,8 @@ class SessionReviewTests(TestCase):
         new_inventory_record = Inventory.objects.filter(location=self.location_01, product=self.product_01).first()
         self.assertEqual(1, new_inventory_record.qty)
 
-        cc_mod = CycleCountModification.objects.filter(session=self.count_session, location_id=self.location_01).first()
-        self.assertEqual(self.location_01, cc_mod.location_id)
+        cc_mod = CycleCountModification.objects.filter(session=self.count_session, location=self.location_01).first()
+        self.assertEqual(self.location_01, cc_mod.location)
         self.assertEqual(self.count_session, cc_mod.session)
         self.assertEqual(self.user, cc_mod.associate)
 
@@ -154,7 +154,7 @@ class SessionReviewTests(TestCase):
         inventory_record = Inventory.objects.filter(location=self.location_01, product=self.product_01).first()
         self.assertEqual(1, inventory_record.qty)
 
-        cc_mod = CycleCountModification.objects.filter(session=self.count_session, location_id=self.location_01).first()
-        self.assertEqual(self.location_01, cc_mod.location_id)
+        cc_mod = CycleCountModification.objects.filter(session=self.count_session, location=self.location_01).first()
+        self.assertEqual(self.location_01, cc_mod.location)
         self.assertEqual(self.count_session, cc_mod.session)
         self.assertEqual(self.user, cc_mod.associate)

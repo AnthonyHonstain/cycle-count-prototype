@@ -143,6 +143,6 @@ def finalize_session(request: HttpRequest, session_id: int) -> HttpResponseRedir
             inventory.save()
 
         # TODO - add columns (product, old qty, new qty) to this, need to modify the DB.
-        CycleCountModification(session=count_session, location_id=location, associate=current_user).save()
+        CycleCountModification(session=count_session, location=location, associate=current_user).save()
 
     return HttpResponseRedirect(reverse('cyclecount:list_active_sessions'))
