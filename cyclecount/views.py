@@ -9,6 +9,7 @@ from django.urls import reverse
 from .models import Location, Product, CountSession, IndividualCount, Inventory, CycleCountModification
 import operator
 
+
 def begin_cycle_count(request: HttpRequest) -> HttpResponse:
     # Prompt the user to see if they want to start a cycle counting session
     return render(request, 'cyclecount/begin_cycle_count.html', {})
@@ -135,14 +136,17 @@ def finalize_session(request: HttpRequest, session_id: int) -> HttpResponseRedir
         location_quantities[key] += 1
 
     for (location, product) in location_quantities:
+        old_qty = 0
         inventory = Inventory.objects.filter(location=location, product=product).first()
         if inventory is None:
-            Inventory(location=location, product=product, qty=location_quantities[(location, product)]).save()
+            inventory = Inventory(location=location, product=product, qty=location_quantities[(location, product)])
+            inventory.save()
         else:
+            old_qty = inventory.qty
             inventory.qty = location_quantities[(location, product)]
             inventory.save()
 
-        # TODO - add columns (product, old qty, new qty) to this, need to modify the DB.
-        CycleCountModification(session=count_session, location=location, associate=current_user).save()
+        CycleCountModification(session=count_session, location=location, product=product, old_qty=old_qty,
+                               new_qty=inventory.qty, associate=current_user).save()
 
     return HttpResponseRedirect(reverse('cyclecount:list_active_sessions'))

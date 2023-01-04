@@ -59,6 +59,9 @@ class CycleCountModification(models.Model):
     # TODO - still not sure how I want to model the final approval of counts that triggers the finally inventory count
     session = models.ForeignKey(CountSession, on_delete=models.CASCADE)
     location = models.ForeignKey(Location, on_delete=models.CASCADE)
+    product = models.ForeignKey(Product, on_delete=models.CASCADE)
+    old_qty = models.IntegerField()
+    new_qty = models.IntegerField()
     associate = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

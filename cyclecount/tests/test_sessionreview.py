@@ -133,9 +133,11 @@ class SessionReviewTests(TestCase):
         new_inventory_record = Inventory.objects.filter(location=self.location_01, product=self.product_01).first()
         self.assertEqual(1, new_inventory_record.qty)
 
-        cc_mod = CycleCountModification.objects.filter(session=self.count_session, location=self.location_01).first()
-        self.assertEqual(self.location_01, cc_mod.location)
-        self.assertEqual(self.count_session, cc_mod.session)
+        cc_mod = CycleCountModification.objects.filter(
+            session=self.count_session, location=self.location_01, product=self.product_01
+        ).first()
+        self.assertEqual(0, cc_mod.old_qty)
+        self.assertEqual(1, cc_mod.new_qty)
         self.assertEqual(self.user, cc_mod.associate)
 
     def test_finalize_session_updates_inventory_record(self):
@@ -154,7 +156,9 @@ class SessionReviewTests(TestCase):
         inventory_record = Inventory.objects.filter(location=self.location_01, product=self.product_01).first()
         self.assertEqual(1, inventory_record.qty)
 
-        cc_mod = CycleCountModification.objects.filter(session=self.count_session, location=self.location_01).first()
-        self.assertEqual(self.location_01, cc_mod.location)
-        self.assertEqual(self.count_session, cc_mod.session)
+        cc_mod = CycleCountModification.objects.filter(
+            session=self.count_session, location=self.location_01, product=self.product_01
+        ).first()
+        self.assertEqual(5, cc_mod.old_qty)
+        self.assertEqual(1, cc_mod.new_qty)
         self.assertEqual(self.user, cc_mod.associate)
