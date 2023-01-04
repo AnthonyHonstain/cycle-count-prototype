@@ -1,9 +1,13 @@
+from functools import reduce
+from typing import Tuple, Dict
+
+from django.db.models import Q
 from django.http import HttpResponseRedirect, HttpRequest, HttpResponse
 from django.shortcuts import render, get_object_or_404
 from django.utils import timezone
 from django.urls import reverse
 from .models import Location, Product, CountSession, IndividualCount, Inventory, CycleCountModification
-
+import operator
 
 def begin_cycle_count(request: HttpRequest) -> HttpResponse:
     # Prompt the user to see if they want to start a cycle counting session
@@ -81,20 +85,25 @@ def session_review(request: HttpRequest, session_id: int) -> HttpResponse:
                          .select_related('associate', 'location', 'product'))
 
     # For each (location,product) get its current qty. Also roll up the count based on the cycle count.
-    location_quantities = {}
+    location_quantities: Dict[Tuple[int, int], Dict] = {}
     for individual_count in individual_counts:
-        key = (individual_count.location, individual_count.product)
+        key = (individual_count.location.id, individual_count.product.id)
         if key not in location_quantities:
-            inventory = Inventory.objects.filter(location=individual_count.location,
-                                                 product=individual_count.product).first()
-            inventory_qty = inventory.qty if inventory is not None else 0
             location_quantities[key] = {
                 'location': individual_count.location,
                 'product': individual_count.product,
                 'cyclecount_qty': 0,
-                'qty': inventory_qty
+                'qty': 0
             }
         location_quantities[key]['cyclecount_qty'] += 1
+
+    if location_quantities:  # We don't want to look up inventory if there are zero IndividualCounts
+        query = reduce(
+            operator.or_,
+            (Q(location_id=loc, product_id=prod) for (loc, prod) in location_quantities.keys())
+        )
+        for inventory in Inventory.objects.filter(query):
+            location_quantities[(inventory.location_id, inventory.product_id)]['qty'] = inventory.qty
 
     context = {
         'count_session': count_session,

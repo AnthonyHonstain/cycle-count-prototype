@@ -75,9 +75,8 @@ class SessionReviewTests(TestCase):
         self.assertContains(response, reverse('cyclecount:finalize_session', args=(self.count_session.id,)))
 
         location_quantities = response.context['location_quantities']
-        self.assertTrue((self.location_01, self.product_01) in location_quantities)
         self.assertEqual(
-            location_quantities[(self.location_01, self.product_01)],
+            location_quantities[(self.location_01.id, self.product_01.id)],
             {
                 'location': self.location_01,
                 'product': self.product_01,
@@ -102,15 +101,14 @@ class SessionReviewTests(TestCase):
         self.assertEqual(response.status_code, 200)
 
         location_quantities = response.context['location_quantities']
-        self.assertTrue((self.location_01, self.product_01) in location_quantities)
         self.assertDictEqual(location_quantities, {
-            (self.location_01, self.product_01): {
+            (self.location_01.id, self.product_01.id): {
                 'location': self.location_01,
                 'product': self.product_01,
                 'cyclecount_qty': 1,
                 'qty': 0,
             },
-            (self.location_02, self.product_02): {
+            (self.location_02.id, self.product_02.id): {
                 'location': self.location_02,
                 'product': self.product_02,
                 'cyclecount_qty': 1,
