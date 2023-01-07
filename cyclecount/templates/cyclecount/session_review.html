@@ -1,26 +1,62 @@
+<style>
+    table, th, td {
+        border:1px solid black;
+    }
+</style>
+
 <h1>Session Review</h1>
-<p>Summary cyclecounts by location</p>
+<p>Summary of cyclecounts by location</p>
 
 <p>Session created by: {{count_session.created_by.username}}</p>
 
-<p>Modifications by (location,product):</p>
-<ul>
+{% if count_session.final_state is None %}
+<p>Modifications to inventory that would result from these cycle counts:</p>
+<table>
+    <tr>
+        <th>Location</th>
+        <th>SKU</th>
+        <th>Current QTY</th>
+        <th>New QTY based on Cycle Counts</th>
+    </tr>
     {% for location_quantity in location_quantities.values %}
-    <li>location:{{location_quantity.location.description}} sku:{{location_quantity.product.sku}} current-qty:{{location_quantity.qty}} new-qty:{{location_quantity.cyclecount_qty}}</li>
+    <tr>
+        <td>{{location_quantity.location.description}}</td>
+        <td>{{location_quantity.product.sku}}</td>
+        <td>{{location_quantity.qty}}</td>
+        <td>{{location_quantity.cyclecount_qty}}</td>
+    </tr>
     {% endfor %}
-</ul>
+</table>
+{% else %}
+<p>Session state: {{count_session.final_state}}</p>
+{% endif %}
 
 <!-- TODO - still need to try and find a cheap way to show time in the browsers timezone 09:30 pst and showing 17:30 UTC -->
 {% load tz %}
 {% localtime on %}
-<p>List of individual counts</p>
-<ul>
+<p>List of individual counts:</p>
+<table>
+    <tr>
+        <th>username</th>
+        <th>Location</th>
+        <th>SKU</th>
+        <th>QTY</th>
+        <th>Datetime</th>
+    </tr>
     {% for ic in individual_counts %}
-    <li>{{ic.associate.username}} {{ic.location.description}} {{ic.product.sku}} {{ic.qty}} {{ic.state}} {{ic.created_at}}</li>
+    <tr>
+        <td>{{ic.associate.username}}</td>
+        <td>{{ic.location.description}}</td>
+        <td>{{ic.product.sku}}</td>
+        <td>{{ic.qty}}</td>
+        <td>{{ic.created_at}}</td>
+    </tr>
     {% endfor %}
-</ul>
+</table>
 {% endlocaltime %}
 
+{% if count_session.final_state is None %}
+<p>Finalize the cycle count</p>
 <form action="{% url 'cyclecount:finalize_session' session_id=count_session.id %}" method="post">
     {% csrf_token %}
     {% for choice in count_session.FinalState %}
@@ -29,3 +65,4 @@
     {% endfor %}
     <input type="submit" value="Submit">
 </form>
+{% endif %}

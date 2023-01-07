@@ -86,6 +86,17 @@ class SessionReviewTests(TestCase):
         )
         # self.assert???(response.content.decode(), 'cycle_count_test test-location-00-empty-desc test-sku-01 1 Active')
 
+    def test_session_review_already_finalized(self):
+        self.finalize_session_helper()
+
+        url = reverse('cyclecount:session_review', args=(self.count_session.id,))
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, reverse('cyclecount:finalize_session', args=(self.count_session.id,)))
+
+        count_session = response.context['count_session']
+        self.assertEqual(CountSession.FinalState.ACCEPTED, count_session.final_state)
+
     def test_session_review_multiple_locations(self):
         Inventory(location=self.location_02, product=self.product_01, qty=3).save()  # This shouldn't have any impact
         Inventory(location=self.location_02, product=self.product_02, qty=5).save()
@@ -116,7 +127,25 @@ class SessionReviewTests(TestCase):
             },
         })
 
-    def test_finalize_session_creates_inventory_record(self):
+    def test_finalize_session_canceled_creates_inventory_record(self):
+        self.client.login(username=self.USERNAME, password=self.PASSWORD)
+        url = reverse('cyclecount:finalize_session', args=(self.count_session.id,))
+        response = self.client.post(url, {'choice': CountSession.FinalState.CANCELED})
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, reverse('cyclecount:list_active_sessions'))
+        updated_count_session = CountSession.objects.get(pk=self.count_session.id)
+        self.assertEqual(CountSession.FinalState.CANCELED, updated_count_session.final_state)
+
+        new_inventory_record = Inventory.objects.filter(location=self.location_01, product=self.product_01).first()
+        self.assertIsNone(new_inventory_record)
+
+        cc_mod = CycleCountModification.objects.filter(
+            session=self.count_session, location=self.location_01, product=self.product_01
+        ).first()
+        self.assertIsNone(cc_mod)
+
+    def test_finalize_session_accepted_creates_inventory_record(self):
         # Key component of this test is checking the CREATION of an Inventory record (location,product)
         inventory_record = Inventory.objects.filter(location=self.location_01, product=self.product_01).first()
         self.assertIsNone(inventory_record)  # Sanity check nothing exists before doing the test.
@@ -140,7 +169,7 @@ class SessionReviewTests(TestCase):
         self.assertEqual(1, cc_mod.new_qty)
         self.assertEqual(self.user, cc_mod.associate)
 
-    def test_finalize_session_updates_inventory_record(self):
+    def test_finalize_session_accepted_updates_inventory_record(self):
         # Key component of this test is checking the UPDATE of an Inventory record (location,product)
         Inventory(location=self.location_01, product=self.product_01, qty=5).save()
 
@@ -164,14 +193,17 @@ class SessionReviewTests(TestCase):
         self.assertEqual(self.user, cc_mod.associate)
 
     def test_finalize_session_thats_already_finalized(self):
-        self.client.login(username=self.USERNAME, password=self.PASSWORD)
+        self.finalize_session_helper()
+
         url = reverse('cyclecount:finalize_session', args=(self.count_session.id,))
-        response = self.client.post(url, {'choice': CountSession.FinalState.ACCEPTED})
-
-        self.assertEqual(response.status_code, 302)
-        updated_count_session = CountSession.objects.get(pk=self.count_session.id)
-        self.assertEqual(CountSession.FinalState.ACCEPTED, updated_count_session.final_state)
-
         # Linchpin of the test - we re-run it again on an already finalized CountSession
         with self.assertRaises(Exception):
             self.client.post(url, {'choice': CountSession.FinalState.ACCEPTED})
+
+    def finalize_session_helper(self):
+        self.client.login(username=self.USERNAME, password=self.PASSWORD)
+        url = reverse('cyclecount:finalize_session', args=(self.count_session.id,))
+        response = self.client.post(url, {'choice': CountSession.FinalState.ACCEPTED})
+        self.assertEqual(response.status_code, 302)
+        updated_count_session = CountSession.objects.get(pk=self.count_session.id)
+        self.assertEqual(CountSession.FinalState.ACCEPTED, updated_count_session.final_state)

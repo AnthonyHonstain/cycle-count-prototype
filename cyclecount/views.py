@@ -131,6 +131,9 @@ def finalize_session(request: HttpRequest, session_id: int) -> HttpResponseRedir
         count_session_lock.final_state_datetime = timezone.now()
         count_session_lock.save()
 
+        if request.POST['choice'] == CountSession.FinalState.CANCELED:
+            return HttpResponseRedirect(reverse('cyclecount:list_active_sessions'))
+
         individual_counts = IndividualCount.objects.filter(session=count_session_lock)
 
         # Modify inventory for everything in the session
