@@ -162,3 +162,16 @@ class SessionReviewTests(TestCase):
         self.assertEqual(5, cc_mod.old_qty)
         self.assertEqual(1, cc_mod.new_qty)
         self.assertEqual(self.user, cc_mod.associate)
+
+    def test_finalize_session_thats_already_finalized(self):
+        self.client.login(username=self.USERNAME, password=self.PASSWORD)
+        url = reverse('cyclecount:finalize_session', args=(self.count_session.id,))
+        response = self.client.post(url, {'choice': CountSession.FinalState.ACCEPTED})
+
+        self.assertEqual(response.status_code, 302)
+        updated_count_session = CountSession.objects.get(pk=self.count_session.id)
+        self.assertEqual(CountSession.FinalState.ACCEPTED, updated_count_session.final_state)
+
+        # Linchpin of the test - we re-run it again on an already finalized CountSession
+        with self.assertRaises(Exception):
+            self.client.post(url, {'choice': CountSession.FinalState.ACCEPTED})

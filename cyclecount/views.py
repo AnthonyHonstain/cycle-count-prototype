@@ -2,7 +2,8 @@ from functools import reduce
 from typing import Tuple, Dict
 
 from django.db.models import Q
-from django.http import HttpResponseRedirect, HttpRequest, HttpResponse
+from django.db import transaction
+from django.http import HttpResponseRedirect, HttpRequest, HttpResponse, HttpResponseNotFound
 from django.shortcuts import render, get_object_or_404
 from django.utils import timezone
 from django.urls import reverse
@@ -115,38 +116,43 @@ def session_review(request: HttpRequest, session_id: int) -> HttpResponse:
 
 
 def finalize_session(request: HttpRequest, session_id: int) -> HttpResponseRedirect:
-    count_session = get_object_or_404(CountSession, pk=session_id)
     current_user = request.user
 
-    # TODO - need to wrap this in a transactions, we don't want to have partial changes.
-    #   A session can be processed (and inventory modifications made) at most ONCE.
-    count_session.final_state = request.POST['choice']
-    count_session.completed_by = current_user
-    count_session.final_state_datetime = timezone.now()
-    count_session.save()
+    with transaction.atomic():
+        count_session_lock = CountSession.objects.select_for_update().get(pk=session_id)
+        if count_session_lock is None:
+            return HttpResponseNotFound()
 
-    individual_counts = IndividualCount.objects.filter(session=count_session)
+        if count_session_lock.final_state is not None:
+            raise Exception(f'CountSession id:{count_session_lock.id} in invalid state of: {count_session_lock.final_state}')
 
-    # Modify inventory for everything in the session
-    location_quantities = {}
-    for individual_count in individual_counts:
-        key = (individual_count.location, individual_count.product)
-        if key not in location_quantities:
-            location_quantities[key] = 0
-        location_quantities[key] += 1
+        count_session_lock.final_state = request.POST['choice']
+        count_session_lock.completed_by = current_user
+        count_session_lock.final_state_datetime = timezone.now()
+        count_session_lock.save()
 
-    for (location, product) in location_quantities:
-        old_qty = 0
-        inventory = Inventory.objects.filter(location=location, product=product).first()
-        if inventory is None:
-            inventory = Inventory(location=location, product=product, qty=location_quantities[(location, product)])
-            inventory.save()
-        else:
-            old_qty = inventory.qty
-            inventory.qty = location_quantities[(location, product)]
-            inventory.save()
+        individual_counts = IndividualCount.objects.filter(session=count_session_lock)
 
-        CycleCountModification(session=count_session, location=location, product=product, old_qty=old_qty,
-                               new_qty=inventory.qty, associate=current_user).save()
+        # Modify inventory for everything in the session
+        location_quantities = {}
+        for individual_count in individual_counts:
+            key = (individual_count.location, individual_count.product)
+            if key not in location_quantities:
+                location_quantities[key] = 0
+            location_quantities[key] += 1
+
+        for (location, product) in location_quantities:
+            old_qty = 0
+            inventory = Inventory.objects.filter(location=location, product=product).first()
+            if inventory is None:
+                inventory = Inventory(location=location, product=product, qty=location_quantities[(location, product)])
+                inventory.save()
+            else:
+                old_qty = inventory.qty
+                inventory.qty = location_quantities[(location, product)]
+                inventory.save()
+
+            CycleCountModification(session=count_session_lock, location=location, product=product, old_qty=old_qty,
+                                   new_qty=inventory.qty, associate=current_user).save()
 
     return HttpResponseRedirect(reverse('cyclecount:list_active_sessions'))
