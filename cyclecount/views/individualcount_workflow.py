@@ -1,4 +1,4 @@
-from django.http import HttpResponseRedirect, HttpRequest, HttpResponse
+from django.http import HttpResponseRedirect, HttpRequest, HttpResponse, HttpResponseNotFound
 from django.shortcuts import render, get_object_or_404
 from django.urls import reverse
 
@@ -21,11 +21,15 @@ def start_new_session(request: HttpRequest) -> HttpResponseRedirect:
 
 def scan_prompt_location(request: HttpRequest, session_id: int) -> HttpResponse:
     session = get_object_or_404(CountSession, pk=session_id)
+    if session.final_state is not None:
+        return HttpResponseNotFound()
     return render(request, 'cyclecount/scan_prompt_location.html', {'session': session})
 
 
-def scan_location(request: HttpRequest, session_id: int) -> HttpResponseRedirect:
+def scan_location(request: HttpRequest, session_id: int) -> HttpResponse:
     session = get_object_or_404(CountSession, pk=session_id)
+    if session.final_state is not None:
+        return HttpResponseNotFound()
     # TODO - How to I deal with invalid location scans
     #  I can visualize the behavior I want, but unsure on how to do it in Django.
     #  This will probably be generic behavior for both location and product scan (validation and user suggestions)
@@ -41,12 +45,16 @@ def scan_location(request: HttpRequest, session_id: int) -> HttpResponseRedirect
 
 def scan_prompt_product(request: HttpRequest, session_id: int, location_id: int) -> HttpResponse:
     session = get_object_or_404(CountSession, pk=session_id)
+    if session.final_state is not None:
+        return HttpResponseNotFound()
     location = get_object_or_404(Location, pk=location_id)
     return render(request, 'cyclecount/scan_prompt_product.html', {'session': session, 'location': location})
 
 
-def scan_product(request: HttpRequest, session_id: int, location_id: int) -> HttpResponseRedirect:
+def scan_product(request: HttpRequest, session_id: int, location_id: int) -> HttpResponse:
     session = get_object_or_404(CountSession, pk=session_id)
+    if session.final_state is not None:
+        return HttpResponseNotFound()
     location = get_object_or_404(Location, pk=location_id)
 
     product = Product.objects.filter(sku=request.POST['sku']).first()

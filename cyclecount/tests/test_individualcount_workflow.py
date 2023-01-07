@@ -49,6 +49,16 @@ class CycleCountTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, reverse('cyclecount:scan_location', args=(self.session.id,)))
 
+    def test_scan_prompt_location_for_closed_session(self):
+        count_session = CountSession(created_by=self.user)
+        count_session.final_state = CountSession.FinalState.CANCELED
+        count_session.save()
+
+        self.client.login(username=self.USERNAME, password=self.PASSWORD)
+        url = reverse('cyclecount:scan_prompt_location', args=(count_session.id,))
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 404)
+
     def test_scan_location(self):
         self.client.login(username=self.USERNAME, password=self.PASSWORD)
         url = reverse('cyclecount:scan_location', args=(self.session.id,))

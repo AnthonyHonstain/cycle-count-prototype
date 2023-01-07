@@ -56,7 +56,7 @@ def session_review(request: HttpRequest, session_id: int) -> HttpResponse:
     return render(request, 'cyclecount/session_review.html', context)
 
 
-def finalize_session(request: HttpRequest, session_id: int) -> HttpResponseRedirect:
+def finalize_session(request: HttpRequest, session_id: int) -> HttpResponse:
     current_user = request.user
 
     with transaction.atomic():
