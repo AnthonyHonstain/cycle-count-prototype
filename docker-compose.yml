@@ -1,0 +1,21 @@
+# Use postgres/example user/password credentials
+version: '3.1'
+
+services:
+
+  db:
+    image: postgres:latest
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    environment:
+      - POSTGRES_HOST_AUTH_METHOD=trust
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    ports:
+      - '5432:5432'
+    # Logging for every query - can comment out the entire line to disable
+    #     Reference: https://stackoverflow.com/a/58806511
+    command: ["postgres", "-c", "log_statement=all"]
+
+volumes:
+  postgres_data:
