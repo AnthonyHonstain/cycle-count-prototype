@@ -13,6 +13,7 @@ class SessionReviewTests(TestCase):
     location_01 = None
     location_02 = None
     product_01 = None
+    product_02 = None
 
     count_session_empty = None
     count_session = None
@@ -67,7 +68,7 @@ class SessionReviewTests(TestCase):
         # TODO - maybe we want to force the user into canceling a session with no counts
         self.assertContains(response, reverse('cyclecount:finalize_session', args=(self.count_session_empty.id,)))
 
-    def test_session_review_(self):
+    def test_session_review(self):
         self.client.login(username=self.USERNAME, password=self.PASSWORD)
         url = reverse('cyclecount:session_review', args=(self.count_session.id,))
         response = self.client.get(url)

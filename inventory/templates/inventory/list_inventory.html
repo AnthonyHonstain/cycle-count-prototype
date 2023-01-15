@@ -1,0 +1,25 @@
+<style>
+    table, th, td {
+        border:1px solid black;
+    }
+</style>
+
+<h1>Inventory Sessions</h1>
+<p>These are the known inventory records</p>
+
+<table>
+    <tr>
+        <th>ID</th>
+        <th>Location</th>
+        <th>SKU</th>
+        <th>QTY</th>
+    </tr>
+    {% for inv in inventory_records %}
+    <tr>
+        <td>{{inv.id}}</td>
+        <td>{{inv.location.description}}</td>
+        <td>{{inv.product.sku}}</td>
+        <td>{{inv.qty}}</td>
+    </tr>
+    {% endfor %}
+</table>

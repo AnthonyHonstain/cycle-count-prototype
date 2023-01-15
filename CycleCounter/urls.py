@@ -19,5 +19,6 @@ from django.urls import path, include
 
 urlpatterns = [
     path('cycle-count/', include('cyclecount.urls')),
+    path('inventory/', include('inventory.urls')),
     path('admin/', admin.site.urls),
 ]
