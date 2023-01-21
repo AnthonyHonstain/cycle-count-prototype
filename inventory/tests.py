@@ -1,7 +1,7 @@
 from django.test import TestCase
 from django.urls import reverse
 
-from cyclecount.models import Location, Product
+from cyclecount.models import Location, Product, Inventory
 
 
 class InventoryTests(TestCase):
@@ -34,5 +34,20 @@ class InventoryTests(TestCase):
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
 
-        inventory_records = response.context['inventory_records']
-        self.assertEqual(0, len(inventory_records))
+    def test_inventory_table_empty(self):
+        url = reverse('inventory:inventory_table')
+        response = self.client.get(url, {'page': 1, 'size': 10})
+        self.assertEqual(response.status_code, 200)
+        self.assertJSONEqual(response.content, {"last_page": 0, "data": []})
+
+    def test_inventory_table_single(self):
+        inv01 = Inventory(location=self.location_01, product=self.product_01, qty=5)
+        inv01.save()
+
+        url = reverse('inventory:inventory_table')
+        response = self.client.get(url, {'page': 1, 'size': 10})
+        self.assertEqual(response.status_code, 200)
+        expected_result = {"last_page": 1, "data": [
+            {'id': inv01.id, 'location': inv01.location.description, 'sku': inv01.product.sku, 'qty': inv01.qty}
+        ]}
+        self.assertJSONEqual(response.content, expected_result)
