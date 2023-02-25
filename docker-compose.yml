@@ -16,6 +16,20 @@ services:
     # Logging for every query - can comment out the entire line to disable
     #     Reference: https://stackoverflow.com/a/58806511
     command: ["postgres", "-c", "log_statement=all"]
+  product-db:
+    image: postgres:latest
+    volumes:
+      - postgres_data_product:/var/lib/postgresql/data/
+    environment:
+      - POSTGRES_HOST_AUTH_METHOD=trust
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    ports:
+      - '5433:5432'
+    # Logging for every query - can comment out the entire line to disable
+    #     Reference: https://stackoverflow.com/a/58806511
+    command: ["postgres", "-c", "log_statement=all"]
 
 volumes:
   postgres_data:
+  postgres_data_product:
