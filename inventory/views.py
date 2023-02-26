@@ -1,6 +1,7 @@
 import math
 import time
 import logging
+import uuid
 
 import requests
 from pydantic import BaseModel
@@ -69,16 +70,18 @@ def inventory_table_from_product_svc(request: HttpRequest) -> HttpResponse:
     start = size * page
     end = start + size
 
-    logging.basicConfig(level=logging.DEBUG)
+    #logging.basicConfig(level=logging.DEBUG)
     s = requests.Session()
     #s.mount('http://', HTTPAdapter(max_retries=Retry(total=1)))
+    provenance_id = uuid.uuid1()
 
     with PerfTrack() as pt1:
+        headers = {'provenance': str(provenance_id)}
         inventory = Inventory.objects.select_related('location').all().order_by('id')[start:end]
 
         inventory_records = []
         for inv in inventory:
-            r = s.get(f'http://127.0.0.1:8001/product/products/{inv.product_id}/')
+            r = s.get(f'http://127.0.0.1:8001/product/products/{inv.product_id}/', headers=headers)
 
             if r.status_code == 200:
                 product = ProductModel(**r.json())
@@ -86,9 +89,9 @@ def inventory_table_from_product_svc(request: HttpRequest) -> HttpResponse:
             else:
                 inventory_records.append({'id': inv.id, 'location': inv.location.description, 'sku': None, 'qty': inv.qty})
 
-    print(f'API - found {len(inventory_records)} many records of total:{inventory_count}, ',
+    print(f'API {str(provenance_id)} - found {len(inventory_records)} many records of total:{inventory_count}, ',
           f'slice on start-end:{start}-{end} '
-          f'sql_count_perf:{int(pt0.result * 1000)}ms get-data:{int(pt1.result * 1000)}ms')
+          f'sql_count_perf:{int(pt0.result * 1000)}ms API_perf:{int(pt1.result * 1000)}ms')
     result = {
         'last_page': math.ceil(inventory_count / size),
         'data': inventory_records

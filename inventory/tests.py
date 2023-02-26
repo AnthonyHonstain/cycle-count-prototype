@@ -35,7 +35,7 @@ class InventoryTests(TestCase):
         self.assertEqual(response.status_code, 200)
 
     def test_inventory_table_empty(self):
-        url = reverse('inventory:inventory_table')
+        url = reverse('inventory:inventory_table_db')
         response = self.client.get(url, {'page': 1, 'size': 10})
         self.assertEqual(response.status_code, 200)
         self.assertJSONEqual(response.content, {"last_page": 0, "data": []})
@@ -44,7 +44,7 @@ class InventoryTests(TestCase):
         inv01 = Inventory(location=self.location_01, product=self.product_01, qty=5)
         inv01.save()
 
-        url = reverse('inventory:inventory_table')
+        url = reverse('inventory:inventory_table_db')
         response = self.client.get(url, {'page': 1, 'size': 10})
         self.assertEqual(response.status_code, 200)
         expected_result = {"last_page": 1, "data": [
