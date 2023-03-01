@@ -2,6 +2,7 @@ import math
 import time
 import logging
 import uuid
+from typing import Optional
 
 import requests
 from pydantic import BaseModel
@@ -26,8 +27,12 @@ class ProductClient:
         self.provenance_id = uuid.uuid1()
         self.headers = {'provenance': str(self.provenance_id)}
 
-    def get_product(self, product_id: int) -> requests.Response:
-        return self.s.get(f'http://127.0.0.1:8001/product/products/{product_id}/', headers=self.headers)
+    def get_product(self, product_id: int) -> Optional[ProductModel]:
+        response = self.s.get(f'http://127.0.0.1:8001/product/products/{product_id}/', headers=self.headers)
+        if response.status_code == 200:
+            product = ProductModel(**response.json())
+            return product
+        return None
 
 
 def list_inventory(request: HttpRequest) -> HttpResponse:
@@ -90,11 +95,10 @@ def inventory_table_from_product_svc(request: HttpRequest) -> HttpResponse:
 
         inventory_records = []
         for inv in inventory:
-            r = product_client.get_product(inv.product_id)
+            product_model = product_client.get_product(inv.product_id)
 
-            if r.status_code == 200:
-                product = ProductModel(**r.json())
-                inventory_records.append({'id': inv.id, 'location': inv.location.description, 'sku': product.sku, 'qty': inv.qty})
+            if product_model:
+                inventory_records.append({'id': inv.id, 'location': inv.location.description, 'sku': product_model.sku, 'qty': inv.qty})
             else:
                 inventory_records.append({'id': inv.id, 'location': inv.location.description, 'sku': None, 'qty': inv.qty})
 

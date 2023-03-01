@@ -1,10 +1,9 @@
-import requests
 from django.test import TestCase
 from django.urls import reverse
 
-from .views import ProductClient
+from .views import ProductModel
 from cyclecount.models import Location, Product, Inventory
-from typing import cast
+from typing import Optional
 from unittest.mock import patch, call
 
 
@@ -17,11 +16,11 @@ class MockResponse:
         return self.json_data
 
 
-def mocked_request_get(product_id: int) -> requests.Response:
-    product_response_01 = {"id": 1, "description": "test-product-01", "sku": "test-sku-01"}
+def mocked_request_get(product_id: int) -> Optional[ProductModel]:
+    product_response_01 = ProductModel(id=1, description="test-product-01", sku="test-sku-01")
     if product_id == 1:
-        return cast(requests.Response, MockResponse(product_response_01, 200))
-    return cast(requests.Response, MockResponse(None, 404))
+        return product_response_01
+    return None
 
 
 class InventoryTests(TestCase):
@@ -44,9 +43,12 @@ class InventoryTests(TestCase):
         cls.location_02 = Location(description='test-location-02-desc')
         cls.location_02.save()
 
-        cls.product_01 = Product(description='test-product-01', sku='test-sku-01')
+        # Forcing Product records to use a specific id, so I can simplify my mocks while we are
+        # existing in the dual state of having a local DB record for Product AND an external service
+        # that owns the Product record.
+        cls.product_01 = Product(id=1, description='test-product-01', sku='test-sku-01')
         cls.product_01.save()
-        cls.product_02 = Product(description='test-product-02', sku='test-sku-02')
+        cls.product_02 = Product(id=2, description='test-product-02', sku='test-sku-02')
         cls.product_02.save()
 
     def test_list_inventory(self):
@@ -76,12 +78,11 @@ class InventoryTests(TestCase):
         inv01 = Inventory(location=self.location_01, product=self.product_01, qty=5)
         inv01.save()
 
-        product_response = {"id": 1, "description": "test-product-01", "sku": "test-sku-01"}
-        with patch.object(ProductClient, 'get_product', return_value=MockResponse(product_response, 200)) as mock_method:
+        with patch('inventory.views.ProductClient.get_product', side_effect=mocked_request_get) as mock_method:
             url = reverse('inventory:inventory_table_api')
             response = self.client.get(url, {'page': 1, 'size': 10})
 
-        mock_method.assert_called_once_with(1)
+        mock_method.assert_called_once_with(self.product_01.id)
         self.assertEqual(response.status_code, 200)
         expected_result = {"last_page": 1, "data": [
             {'id': inv01.id, 'location': inv01.location.description, 'sku': inv01.product.sku, 'qty': inv01.qty},
@@ -98,7 +99,7 @@ class InventoryTests(TestCase):
             url = reverse('inventory:inventory_table_api')
             response = self.client.get(url, {'page': 1, 'size': 10})
 
-        mock_method.assert_has_calls([call(1), call(2)])
+        mock_method.assert_has_calls([call(self.product_01.id), call(self.product_02.id)])
         self.assertEqual(response.status_code, 200)
         expected_result = {"last_page": 1, "data": [
             {'id': inv01.id, 'location': inv01.location.description, 'sku': inv01.product.sku, 'qty': inv01.qty},
