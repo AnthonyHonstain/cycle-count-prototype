@@ -1,6 +1,7 @@
 import math
 import time
 import logging
+import structlog
 import uuid
 from typing import Optional
 
@@ -10,6 +11,9 @@ from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import render
 
 from cyclecount.models import Inventory
+
+
+log = structlog.get_logger(__name__)
 
 
 class ProductModel(BaseModel):
@@ -28,6 +32,7 @@ class ProductClient:
         self.headers = {'provenance': str(self.provenance_id)}
 
     def get_product(self, product_id: int) -> Optional[ProductModel]:
+        log.info('get_product', product_id=product_id)
         response = self.s.get(f'http://127.0.0.1:8001/product/products/{product_id}/', headers=self.headers)
         if response.status_code == 200:
             product = ProductModel(**response.json())
@@ -102,9 +107,10 @@ def inventory_table_from_product_svc(request: HttpRequest) -> HttpResponse:
             else:
                 inventory_records.append({'id': inv.id, 'location': inv.location.description, 'sku': None, 'qty': inv.qty})
 
-    print(f'API {str(product_client.provenance_id)} - found {len(inventory_records)} many records of total:{inventory_count}, ',
-          f'slice on start-end:{start}-{end} '
-          f'sql_count_perf:{int(pt0.result * 1000)}ms API_perf:{int(pt1.result * 1000)}ms')
+    log.info('inventory API results', returned_count=len(inventory_records), total_count=inventory_count, slice=f'{start}-{end}', sql_count_perf_ms=int(pt0.result * 1000), API_perf_ms=int(pt1.result * 1000))
+    # print(f'API {str(product_client.provenance_id)} - found {len(inventory_records)} many records of total:{inventory_count}, ',
+    #       f'slice on start-end:{start}-{end} '
+    #       f'sql_count_perf:{int(pt0.result * 1000)}ms API_perf:{int(pt1.result * 1000)}ms')
     result = {
         'last_page': math.ceil(inventory_count / size),
         'data': inventory_records
