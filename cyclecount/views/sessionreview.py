@@ -2,6 +2,7 @@ import operator
 from functools import reduce
 from typing import Tuple, Dict
 
+import structlog
 from django.db import transaction
 from django.db.models import Q
 from django.http import HttpResponseRedirect, HttpRequest, HttpResponse, HttpResponseNotFound
@@ -10,6 +11,9 @@ from django.urls import reverse
 from django.utils import timezone
 
 from cyclecount.models import CountSession, IndividualCount, Inventory, CycleCountModification
+
+
+log = structlog.get_logger(__name__)
 
 
 def list_active_sessions(request: HttpRequest) -> HttpResponse:
@@ -38,7 +42,7 @@ def session_review(request: HttpRequest, session_id: int) -> HttpResponse:
                 'cyclecount_qty': 0,
                 'qty': 0
             }
-        location_quantities[key]['cyclecount_qty'] += 1
+        location_quantities[key]['cyclecount_qty'] += individual_count.qty
 
     if location_quantities:  # We don't want to look up inventory if there are zero IndividualCounts
         query = reduce(
@@ -48,6 +52,11 @@ def session_review(request: HttpRequest, session_id: int) -> HttpResponse:
         for inventory in Inventory.objects.filter(query):
             location_quantities[(inventory.location_id, inventory.product_id)]['qty'] = inventory.qty
 
+    log.info(
+        'session_review summary',
+        individual_counts_count=len(individual_counts),
+        location_quantities_count=len(location_quantities)
+    )
     context = {
         'count_session': count_session,
         'location_quantities': location_quantities,

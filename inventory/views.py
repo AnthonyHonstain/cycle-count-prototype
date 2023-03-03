@@ -32,7 +32,7 @@ class ProductClient:
         self.headers = {'provenance': str(self.provenance_id)}
 
     def get_product(self, product_id: int) -> Optional[ProductModel]:
-        log.info('get_product', product_id=product_id)
+        log.debug('get_product', product_id=product_id)
         response = self.s.get(f'http://127.0.0.1:8001/product/products/{product_id}/', headers=self.headers)
         if response.status_code == 200:
             product = ProductModel(**response.json())
@@ -56,7 +56,7 @@ def inventory_table_from_db(request: HttpRequest) -> HttpResponse:
 
     page = int(request.GET.get('page')) - 1
     size = int(request.GET.get('size'))
-    print(f'page:{page} size:{size}')
+    log.info('pagination_details', page=page, size=size)
 
     with PerfTrack() as pt0:
         inventory_count = Inventory.objects.count()
@@ -71,9 +71,7 @@ def inventory_table_from_db(request: HttpRequest) -> HttpResponse:
         for inv in inventory:
             inventory_records.append({'id': inv.id, 'location': inv.location.description, 'sku': inv.product.sku, 'qty': inv.qty})
 
-    print(f'DB - found {len(inventory_records)} many records of total:{inventory_count}, ',
-          f'slice on start-end:{start}-{end} '
-          f'sql_count_perf:{int(pt0.result * 1000)} sql:{int(pt1.result * 1000)}')
+    log.info('inventory DB results', returned_count=len(inventory_records), total_count=inventory_count, slice=f'{start}-{end}', sql_count_perf_ms=int(pt0.result * 1000), sql_perf_ms=int(pt1.result * 1000))
     result = {
         'last_page': math.ceil(inventory_count / size),
         'data': inventory_records
@@ -85,7 +83,7 @@ def inventory_table_from_product_svc(request: HttpRequest) -> HttpResponse:
 
     page = int(request.GET.get('page')) - 1
     size = int(request.GET.get('size'))
-    print(f'page:{page} size:{size}')
+    log.info('pagination_details', page=page, size=size)
 
     with PerfTrack() as pt0:
         inventory_count = Inventory.objects.count()
@@ -108,9 +106,6 @@ def inventory_table_from_product_svc(request: HttpRequest) -> HttpResponse:
                 inventory_records.append({'id': inv.id, 'location': inv.location.description, 'sku': None, 'qty': inv.qty})
 
     log.info('inventory API results', returned_count=len(inventory_records), total_count=inventory_count, slice=f'{start}-{end}', sql_count_perf_ms=int(pt0.result * 1000), API_perf_ms=int(pt1.result * 1000))
-    # print(f'API {str(product_client.provenance_id)} - found {len(inventory_records)} many records of total:{inventory_count}, ',
-    #       f'slice on start-end:{start}-{end} '
-    #       f'sql_count_perf:{int(pt0.result * 1000)}ms API_perf:{int(pt1.result * 1000)}ms')
     result = {
         'last_page': math.ceil(inventory_count / size),
         'data': inventory_records

@@ -1,8 +1,12 @@
+import structlog
 from django.http import HttpResponseRedirect, HttpRequest, HttpResponse, HttpResponseNotFound
 from django.shortcuts import render, get_object_or_404
 from django.urls import reverse
 
 from cyclecount.models import Location, Product, CountSession, IndividualCount
+
+
+log = structlog.get_logger(__name__)
 
 
 def begin_cycle_count(request: HttpRequest) -> HttpResponse:
