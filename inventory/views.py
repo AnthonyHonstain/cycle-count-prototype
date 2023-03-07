@@ -1,6 +1,5 @@
 import math
 import time
-import logging
 import structlog
 import uuid
 from typing import Optional
@@ -29,10 +28,13 @@ class ProductClient:
         # Experimenting with an adapter to control retry behavior.
         # s.mount('http://', HTTPAdapter(max_retries=Retry(total=1)))
         self.provenance_id = uuid.uuid1()
-        self.headers = {'provenance': str(self.provenance_id)}
+        self.headers = {'X-Correlation-ID': str(self.provenance_id)}
 
     def get_product(self, product_id: int) -> Optional[ProductModel]:
         log.debug('get_product', product_id=product_id)
+        # Todo - in order to play nice with the X-Request-ID in the logging framework
+        #  should I set a request header so retries are clearer ?
+        #  https://django-structlog.readthedocs.io/en/latest/events.html#django-s-requestmiddleware
         response = self.s.get(f'http://127.0.0.1:8001/product/products/{product_id}/', headers=self.headers)
         if response.status_code == 200:
             product = ProductModel(**response.json())
