@@ -185,15 +185,15 @@ LOGGING = {
             "handlers": ["console", "flat_line_file", "json_file"],
             "level": "INFO",
         },
-        # Make sure to replace the following logger's name for yours
-        "CycleCounter": {
+        # I have misunderstood this configuration a few times now https://django-structlog.readthedocs.io/en/latest/
+        "cyclecount": {
             "handlers": ["console", "flat_line_file", "json_file"],
             "level": "INFO",
         },
-    },
-    'root': {
-        'handlers': ["console", "flat_line_file", "json_file"],
-        'level': 'INFO',
+        "inventory": {
+            "handlers": ["console", "flat_line_file", "json_file"],
+            "level": "INFO",
+        },
     },
 }
 
