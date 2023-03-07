@@ -41,7 +41,9 @@ def scan_location(request: HttpRequest, session_id: int) -> HttpResponse:
     if location is None:
         return render(request, 'cyclecount/scan_prompt_location.html',
                       {'session': session, 'error_message': "Invalid location"})
-    # TODO - the back button in the brower was triggering MultiValueDictKeyError
+
+    log.info('scan_location', session_id=session_id, location=location.id, associate=request.user.id)
+    # TODO - the back button in the browser was triggering MultiValueDictKeyError
     #  https://stackoverflow.com/questions/5895588/django-multivaluedictkeyerror-error-how-do-i-deal-with-it
     #  ANSWER: the name on the attribute in the form was different from what I was trying to get from the POST dict key
     return HttpResponseRedirect(reverse('cyclecount:scan_prompt_product', args=(session.id, location.id)))
@@ -73,5 +75,8 @@ def scan_product(request: HttpRequest, session_id: int, location_id: int) -> Htt
         state=IndividualCount.CountState.ACTIVE
     )
     individual_count.save()
+
+    log.info('scan_product individual_count created',
+             session_id=session_id, location=location.id, product=product.id, associate=current_user.id)
 
     return HttpResponseRedirect(reverse('cyclecount:scan_prompt_product', args=(session.id, location.id)))
