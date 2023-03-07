@@ -87,6 +87,31 @@ class SessionReviewTests(TestCase):
         )
         # self.assert???(response.content.decode(), 'cycle_count_test test-location-00-empty-desc test-sku-01 1 Active')
 
+    def test_session_review_with_unusual_cyclecount_qty(self):
+        self.client.login(username=self.USERNAME, password=self.PASSWORD)
+
+        # This is a somewhat unusual case, as we currently don't have a way to generate individual count records
+        # with a quantity greater than 1, but the column allow for it, so adding some basic checks.
+        self.individual_count_01.qty = 2
+        self.individual_count_01.save()
+
+        url = reverse('cyclecount:session_review', args=(self.count_session.id,))
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, reverse('cyclecount:finalize_session', args=(self.count_session.id,)))
+
+        location_quantities = response.context['location_quantities']
+        self.assertEqual(
+            location_quantities[(self.location_01.id, self.product_01.id)],
+            {
+                'location': self.location_01,
+                'product': self.product_01,
+                'cyclecount_qty': 2,
+                'qty': 0
+            }
+        )
+
+
     def test_session_review_already_finalized(self):
         self.finalize_session_helper()
 
