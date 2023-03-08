@@ -31,7 +31,7 @@ class ProductClient:
         self.headers = {'X-Correlation-ID': str(self.provenance_id)}
 
     def get_product(self, product_id: int) -> Optional[ProductModel]:
-        log.debug('get_product', product_id=product_id)
+        log.info('get_product', product_id=product_id, correlation_id=str(self.provenance_id))
         # Todo - in order to play nice with the X-Request-ID in the logging framework
         #  should I set a request header so retries are clearer ?
         #  https://django-structlog.readthedocs.io/en/latest/events.html#django-s-requestmiddleware
