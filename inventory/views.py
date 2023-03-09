@@ -47,13 +47,20 @@ def list_inventory(request: HttpRequest) -> HttpResponse:
 
 
 '''
-WHY:
-Why we have two very similar methods in this view:
-  * inventory_table_from_db
-  * inventory_table_from_product_svc
-Both of these should spit out a very similar behavior.
+Explanation on why we have inventory_table_from_db and inventory_table_from_product_svc
 
+WHY: They are being using to experiment with pagination, and to experiment with extracting
+logic to a new microservice.  
+
+Both of these should general equivalent results for calls made by the list_inventory view.
+
+inventory_table_from_product_svc looks pretty unusual, but it is being used to experiment
+with the requests library (experimenting with sessions, logging, and error handling).
+The large number of small requests to the product service isn't the way I would solve
+the problem of list_inventory + pagination, but its a vehicle for experimentation.
 '''
+
+
 def inventory_table_from_db(request: HttpRequest) -> HttpResponse:
 
     page = int(request.GET.get('page')) - 1

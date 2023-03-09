@@ -1,4 +1,5 @@
 import structlog
+from django.contrib.auth.decorators import login_required
 from django.http import HttpResponseRedirect, HttpRequest, HttpResponse, HttpResponseNotFound
 from django.shortcuts import render, get_object_or_404
 from django.urls import reverse
@@ -9,20 +10,22 @@ from cyclecount.models import Location, Product, CountSession, IndividualCount
 log = structlog.get_logger(__name__)
 
 
+@login_required
 def begin_cycle_count(request: HttpRequest) -> HttpResponse:
     # Prompt the user to see if they want to start a cycle counting session
     return render(request, 'cyclecount/begin_cycle_count.html', {})
 
 
+@login_required
 def start_new_session(request: HttpRequest) -> HttpResponseRedirect:
-    # TODO - this is dumb, I don't want to create a new session for each page load.
+    # TODO - this feel dumb, do I want to create a new session for each page load?
     # TODO -      Note that its been a few years since I though through these full stack design issues
-    current_user = request.user
-    new_session = CountSession(created_by=current_user)
+    new_session = CountSession(created_by=request.user)
     new_session.save()
     return HttpResponseRedirect(reverse('cyclecount:scan_prompt_location', args=(new_session.id,)))
 
 
+@login_required
 def scan_prompt_location(request: HttpRequest, session_id: int) -> HttpResponse:
     session = get_object_or_404(CountSession, pk=session_id)
     if session.final_state is not None:
@@ -30,6 +33,7 @@ def scan_prompt_location(request: HttpRequest, session_id: int) -> HttpResponse:
     return render(request, 'cyclecount/scan_prompt_location.html', {'session': session})
 
 
+@login_required
 def scan_location(request: HttpRequest, session_id: int) -> HttpResponse:
     session = get_object_or_404(CountSession, pk=session_id)
     if session.final_state is not None:
@@ -49,6 +53,7 @@ def scan_location(request: HttpRequest, session_id: int) -> HttpResponse:
     return HttpResponseRedirect(reverse('cyclecount:scan_prompt_product', args=(session.id, location.id)))
 
 
+@login_required
 def scan_prompt_product(request: HttpRequest, session_id: int, location_id: int) -> HttpResponse:
     session = get_object_or_404(CountSession, pk=session_id)
     if session.final_state is not None:
@@ -57,6 +62,7 @@ def scan_prompt_product(request: HttpRequest, session_id: int, location_id: int)
     return render(request, 'cyclecount/scan_prompt_product.html', {'session': session, 'location': location})
 
 
+@login_required
 def scan_product(request: HttpRequest, session_id: int, location_id: int) -> HttpResponse:
     session = get_object_or_404(CountSession, pk=session_id)
     if session.final_state is not None:
@@ -68,15 +74,14 @@ def scan_product(request: HttpRequest, session_id: int, location_id: int) -> Htt
         return render(request, 'cyclecount/scan_prompt_product.html', {
             'session': session, 'location': location, 'error_message': "Invalid location"
         })
-    current_user = request.user
 
     individual_count = IndividualCount(
-        associate=current_user, session=session, location=location, product=product,
+        associate=request.user, session=session, location=location, product=product,
         state=IndividualCount.CountState.ACTIVE
     )
     individual_count.save()
 
     log.info('scan_product individual_count created',
-             session_id=session_id, location=location.id, product=product.id, associate=current_user.id)
+             session_id=session_id, location=location.id, product=product.id, associate=request.user.id)
 
     return HttpResponseRedirect(reverse('cyclecount:scan_prompt_product', args=(session.id, location.id)))
