@@ -11,7 +11,7 @@ urlpatterns = [
     path('scan-prompt-product/<int:session_id>/<int:location_id>', individualcount_workflow.scan_prompt_product, name='scan_prompt_product'),
     path('scan-product/<int:session_id>/<int:location_id>', individualcount_workflow.scan_product, name='scan_product'),
 
-    path('list_active_sessions/', sessionreview.list_active_sessions, name='list_active_sessions'),
-    path('session_review/<int:session_id>', sessionreview.session_review, name='session_review'),
-    path('finalize_session/<int:session_id>', sessionreview.finalize_session, name='finalize_session'),
+    path('list-active-sessions/', sessionreview.list_active_sessions, name='list_active_sessions'),
+    path('session-review/<int:session_id>', sessionreview.session_review, name='session_review'),
+    path('finalize-session/<int:session_id>', sessionreview.finalize_session, name='finalize_session'),
 ]

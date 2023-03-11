@@ -3,6 +3,7 @@ from functools import reduce
 from typing import Tuple, Dict
 
 import structlog
+from django.contrib.auth.decorators import login_required
 from django.db import transaction
 from django.db.models import Q
 from django.http import HttpResponseRedirect, HttpRequest, HttpResponse, HttpResponseNotFound
@@ -16,6 +17,7 @@ from cyclecount.models import CountSession, IndividualCount, Inventory, CycleCou
 log = structlog.get_logger(__name__)
 
 
+@login_required
 def list_active_sessions(request: HttpRequest) -> HttpResponse:
     # Going to start with just getting sessions created by the user, once I decide
     # on how to approach multi-tenant, this will surely change.
@@ -24,6 +26,7 @@ def list_active_sessions(request: HttpRequest) -> HttpResponse:
     return render(request, 'cyclecount/list_sessions.html', {'count_sessions': count_sessions})
 
 
+@login_required
 def session_review(request: HttpRequest, session_id: int) -> HttpResponse:
     count_session = get_object_or_404(CountSession, pk=session_id)
 
@@ -65,6 +68,7 @@ def session_review(request: HttpRequest, session_id: int) -> HttpResponse:
     return render(request, 'cyclecount/session_review.html', context)
 
 
+@login_required
 def finalize_session(request: HttpRequest, session_id: int) -> HttpResponse:
     current_user = request.user
 

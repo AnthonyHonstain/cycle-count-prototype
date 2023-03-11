@@ -1,4 +1,5 @@
 from django.test import TestCase
+from django.test import Client
 from django.urls import reverse
 
 from cyclecount.models import CustomUser, CountSession, Location, Product, IndividualCount, Inventory, \
@@ -18,6 +19,7 @@ class SessionReviewTests(TestCase):
     count_session_empty = None
     count_session = None
     individual_count_01 = None
+    logged_in_client: Client = None
 
     @classmethod
     def setUpTestData(cls):
@@ -51,27 +53,36 @@ class SessionReviewTests(TestCase):
             state=IndividualCount.CountState.ACTIVE
         )
         cls.individual_count_01.save()
+        cls.logged_in_client = Client()
+        cls.logged_in_client.login(username=cls.USERNAME, password=cls.PASSWORD)
+
+    def test_no_auth(self):
+        response = self.client.get(reverse('cyclecount:list_active_sessions'))
+        self.assertRedirects(response, '/accounts/login/?next=/cycle-count/list-active-sessions/', status_code=302)
+
+        response = self.client.get(reverse('cyclecount:session_review', args=(self.count_session_empty.id,)))
+        self.assertRedirects(response, f'/accounts/login/?next=/cycle-count/session-review/{self.count_session_empty.id}', status_code=302)
+
+        response = self.client.get(reverse('cyclecount:finalize_session', args=(self.count_session_empty.id,)))
+        self.assertRedirects(response, f'/accounts/login/?next=/cycle-count/finalize-session/{self.count_session_empty.id}', status_code=302)
 
     def test_begin_cycle_count_loads_and_has_link_to_start(self):
-        self.client.login(username=self.USERNAME, password=self.PASSWORD)
         url = reverse('cyclecount:list_active_sessions')
-        response = self.client.get(url)
+        response = self.logged_in_client.get(url)
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, reverse('cyclecount:session_review', args=(self.count_session_empty.id,)))
 
     def test_session_review_empty_session(self):
-        self.client.login(username=self.USERNAME, password=self.PASSWORD)
         url = reverse('cyclecount:session_review', args=(self.count_session_empty.id,))
-        response = self.client.get(url)
+        response = self.logged_in_client.get(url)
         self.assertEqual(response.status_code, 200)
         # There isn't much to show here because the session didn't have any counts.
         # TODO - maybe we want to force the user into canceling a session with no counts
         self.assertContains(response, reverse('cyclecount:finalize_session', args=(self.count_session_empty.id,)))
 
     def test_session_review(self):
-        self.client.login(username=self.USERNAME, password=self.PASSWORD)
         url = reverse('cyclecount:session_review', args=(self.count_session.id,))
-        response = self.client.get(url)
+        response = self.logged_in_client.get(url)
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, reverse('cyclecount:finalize_session', args=(self.count_session.id,)))
 
@@ -88,15 +99,13 @@ class SessionReviewTests(TestCase):
         # self.assert???(response.content.decode(), 'cycle_count_test test-location-00-empty-desc test-sku-01 1 Active')
 
     def test_session_review_with_unusual_cyclecount_qty(self):
-        self.client.login(username=self.USERNAME, password=self.PASSWORD)
-
         # This is a somewhat unusual case, as we currently don't have a way to generate individual count records
         # with a quantity greater than 1, but the column allow for it, so adding some basic checks.
         self.individual_count_01.qty = 2
         self.individual_count_01.save()
 
         url = reverse('cyclecount:session_review', args=(self.count_session.id,))
-        response = self.client.get(url)
+        response = self.logged_in_client.get(url)
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, reverse('cyclecount:finalize_session', args=(self.count_session.id,)))
 
@@ -111,12 +120,25 @@ class SessionReviewTests(TestCase):
             }
         )
 
+    def finalize_session_helper(self, final_state: CountSession.FinalState) -> None:
+        """
+        Call finalize_session, assert redirect happens, assert CountSession record is updated
+        :param final_state:
+        :return:
+        """
+        url = reverse('cyclecount:finalize_session', args=(self.count_session.id,))
+        response = self.logged_in_client.post(url, {'choice': final_state})
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, reverse('cyclecount:list_active_sessions'))
+        updated_count_session = CountSession.objects.get(pk=self.count_session.id)
+        self.assertEqual(final_state, updated_count_session.final_state)
+        return
 
     def test_session_review_already_finalized(self):
-        self.finalize_session_helper()
+        self.finalize_session_helper(CountSession.FinalState.ACCEPTED)
 
         url = reverse('cyclecount:session_review', args=(self.count_session.id,))
-        response = self.client.get(url)
+        response = self.logged_in_client.get(url)
         self.assertEqual(response.status_code, 200)
         self.assertNotContains(response, reverse('cyclecount:finalize_session', args=(self.count_session.id,)))
 
@@ -132,9 +154,8 @@ class SessionReviewTests(TestCase):
         )
         individual_count_02.save()
 
-        self.client.login(username=self.USERNAME, password=self.PASSWORD)
         url = reverse('cyclecount:session_review', args=(self.count_session.id,))
-        response = self.client.get(url)
+        response = self.logged_in_client.get(url)
         self.assertEqual(response.status_code, 200)
 
         location_quantities = response.context['location_quantities']
@@ -154,14 +175,7 @@ class SessionReviewTests(TestCase):
         })
 
     def test_finalize_session_canceled_creates_inventory_record(self):
-        self.client.login(username=self.USERNAME, password=self.PASSWORD)
-        url = reverse('cyclecount:finalize_session', args=(self.count_session.id,))
-        response = self.client.post(url, {'choice': CountSession.FinalState.CANCELED})
-
-        self.assertEqual(response.status_code, 302)
-        self.assertEqual(response.url, reverse('cyclecount:list_active_sessions'))
-        updated_count_session = CountSession.objects.get(pk=self.count_session.id)
-        self.assertEqual(CountSession.FinalState.CANCELED, updated_count_session.final_state)
+        self.finalize_session_helper(CountSession.FinalState.CANCELED)
 
         new_inventory_record = Inventory.objects.filter(location=self.location_01, product=self.product_01).first()
         self.assertIsNone(new_inventory_record)
@@ -176,60 +190,45 @@ class SessionReviewTests(TestCase):
         inventory_record = Inventory.objects.filter(location=self.location_01, product=self.product_01).first()
         self.assertIsNone(inventory_record)  # Sanity check nothing exists before doing the test.
 
-        self.client.login(username=self.USERNAME, password=self.PASSWORD)
-        url = reverse('cyclecount:finalize_session', args=(self.count_session.id,))
-        response = self.client.post(url, {'choice': CountSession.FinalState.ACCEPTED})
+        self.finalize_session_helper(CountSession.FinalState.ACCEPTED)
 
-        self.assertEqual(response.status_code, 302)
-        self.assertEqual(response.url, reverse('cyclecount:list_active_sessions'))
-        updated_count_session = CountSession.objects.get(pk=self.count_session.id)
-        self.assertEqual(CountSession.FinalState.ACCEPTED, updated_count_session.final_state)
-
-        new_inventory_record = Inventory.objects.filter(location=self.location_01, product=self.product_01).first()
-        self.assertEqual(1, new_inventory_record.qty)
-
-        cc_mod = CycleCountModification.objects.filter(
-            session=self.count_session, location=self.location_01, product=self.product_01
-        ).first()
-        self.assertEqual(0, cc_mod.old_qty)
-        self.assertEqual(1, cc_mod.new_qty)
-        self.assertEqual(self.user, cc_mod.associate)
+        self.check_inventory_and_ccmod(self.location_01, self.product_01, 0, 1)
 
     def test_finalize_session_accepted_updates_inventory_record(self):
         # Key component of this test is checking the UPDATE of an Inventory record (location,product)
         Inventory(location=self.location_01, product=self.product_01, qty=5).save()
 
-        self.client.login(username=self.USERNAME, password=self.PASSWORD)
-        url = reverse('cyclecount:finalize_session', args=(self.count_session.id,))
-        response = self.client.post(url, {'choice': CountSession.FinalState.ACCEPTED})
+        self.finalize_session_helper(CountSession.FinalState.ACCEPTED)
 
-        self.assertEqual(response.status_code, 302)
-        self.assertEqual(response.url, reverse('cyclecount:list_active_sessions'))
-        updated_count_session = CountSession.objects.get(pk=self.count_session.id)
-        self.assertEqual(CountSession.FinalState.ACCEPTED, updated_count_session.final_state)
+        self.check_inventory_and_ccmod(self.location_01, self.product_01, 5, 1)
 
-        inventory_record = Inventory.objects.filter(location=self.location_01, product=self.product_01).first()
-        self.assertEqual(1, inventory_record.qty)
+    def test_finalize_session_accepted_creates_and_update(self):
+        Inventory(location=self.location_01, product=self.product_01, qty=5).save()
+        individual_count_02 = IndividualCount(
+            associate=self.user, session=self.count_session, location=self.location_02, product=self.product_02,
+            state=IndividualCount.CountState.ACTIVE
+        )
+        individual_count_02.save()
 
+        self.finalize_session_helper(CountSession.FinalState.ACCEPTED)
+
+        self.check_inventory_and_ccmod(self.location_01, self.product_01, 5, 1)
+        self.check_inventory_and_ccmod(self.location_02, self.product_02, 0, 1)
+
+    def check_inventory_and_ccmod(self, location: Location, product: Product, old_qty: int, new_qty: int) -> None:
+        inventory_record_02 = Inventory.objects.filter(location=location, product=product).first()
+        self.assertEqual(1, inventory_record_02.qty)
         cc_mod = CycleCountModification.objects.filter(
-            session=self.count_session, location=self.location_01, product=self.product_01
+            session=self.count_session, location=location, product=product
         ).first()
-        self.assertEqual(5, cc_mod.old_qty)
-        self.assertEqual(1, cc_mod.new_qty)
-        self.assertEqual(self.user, cc_mod.associate)
+        self.assertEqual(old_qty, cc_mod.old_qty)
+        self.assertEqual(new_qty, cc_mod.new_qty)
 
     def test_finalize_session_thats_already_finalized(self):
-        self.finalize_session_helper()
+        self.finalize_session_helper(CountSession.FinalState.ACCEPTED)
 
         url = reverse('cyclecount:finalize_session', args=(self.count_session.id,))
         # Linchpin of the test - we re-run it again on an already finalized CountSession
         with self.assertRaises(Exception):
-            self.client.post(url, {'choice': CountSession.FinalState.ACCEPTED})
+            self.logged_in_client.post(url, {'choice': CountSession.FinalState.ACCEPTED})
 
-    def finalize_session_helper(self):
-        self.client.login(username=self.USERNAME, password=self.PASSWORD)
-        url = reverse('cyclecount:finalize_session', args=(self.count_session.id,))
-        response = self.client.post(url, {'choice': CountSession.FinalState.ACCEPTED})
-        self.assertEqual(response.status_code, 302)
-        updated_count_session = CountSession.objects.get(pk=self.count_session.id)
-        self.assertEqual(CountSession.FinalState.ACCEPTED, updated_count_session.final_state)
